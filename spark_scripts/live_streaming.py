@@ -99,7 +99,7 @@ def save_accumulated_to_minio(spark, bucket, path_prefix):
     Returns:
         bool: True if successful
     """
-    
+    global accumulated_records
     if not accumulated_records:
         return True  # Nothing to save
     
