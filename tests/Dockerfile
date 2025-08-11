@@ -1,8 +1,8 @@
 FROM python:3.11-slim
 
-# Install Java for Spark
+# Install Java for Spark - use openjdk-11-jre-headless instead of openjdk-11-jdk
 RUN apt-get update && apt-get install -y \
-    openjdk-11-jdk \
+    openjdk-11-jre-headless \
     && rm -rf /var/lib/apt/lists/*
 
 # Set JAVA_HOME environment variable
