@@ -267,7 +267,6 @@ def cleanup_resources():
     """
     Clean up resources before shutdown
     """
-    global accumulated_records
     
     # Save any remaining accumulated records
     if accumulated_records:
