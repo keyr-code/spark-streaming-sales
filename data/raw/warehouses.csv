@@ -1,0 +1,9 @@
+warehouse_id,name,address,city,state,zip_code,capacity_sqft,manager_id,phone
+WH01,Warehouse A,0017 Calderon Trace,East Bruceborough,NE,06938,363855,EMP00058,+1-614-830-6634x910
+WH02,Warehouse B,1136 Shane Light Suite 477,Port Amy,SC,17415,83677,EMP00057,(323)674-0252x1069
+WH03,Warehouse C,1716 Salazar Green,Bennettmouth,GU,23477,448256,EMP00086,974-845-0869x70136
+WH04,Warehouse D,150 Simon Walks,Carrolltown,FM,76111,322304,EMP00053,001-814-363-5878x875
+WH05,Warehouse E,24374 Michelle Cliff,Davidborough,MT,01212,299412,EMP00005,379-968-6734x2523
+WH06,Warehouse F,466 Castro Extensions Apt. 802,New Amandamouth,MO,69991,211054,EMP00098,+1-710-910-8373x749
+WH07,Warehouse G,426 Hamilton Rapids,Jessicaburgh,DE,56873,492495,EMP00089,(736)715-9708
+WH08,Warehouse H,486 Farley Loop,Terrencefurt,SC,95912,167923,EMP00033,001-735-228-0710x293

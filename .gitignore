@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.so
+.venv/
+venv/
+env/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+airflow/logs/
+
+# Spark
+metastore_db/
+derby.log
+spark-warehouse/
+
+# Airflow
+airflow.cfg.bak
+
+# Temporary
+tmp/
+temp/
+*.tmp
+DEPLOYMENT_GUIDE.md

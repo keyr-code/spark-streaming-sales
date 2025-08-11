@@ -1,0 +1,13 @@
+pandas
+numpy
+faker
+minio
+confluent-kafka
+psycopg2-binary
+sqlalchemy
+pyspark
+python-dotenv
+pytest
+pytest-cov
+flake8
+black

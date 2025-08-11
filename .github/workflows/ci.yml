@@ -1,0 +1,146 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:13
+        env:
+          POSTGRES_PASSWORD: root
+          POSTGRES_USER: root
+          POSTGRES_DB: goods_store
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Cache dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+    
+    - name: Install dependencies
+      run: |
+        pip install pytest pyspark psycopg2-binary flake8 black
+        pip install -r requirements.txt
+    
+    - name: Lint with flake8
+      run: flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+    
+    - name: Check code formatting
+      run: black --check .
+    
+    - name: Run unit tests
+      run: pytest tests/ -v --cov=. --cov-report=xml
+    
+    - name: Upload coverage
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+
+  integration-test:
+    runs-on: ubuntu-latest
+    needs: test
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+    
+    - name: Build test image
+      run: docker-compose -f docker-compose.test.yml build
+    
+    - name: Run integration tests
+      run: docker-compose -f docker-compose.test.yml up --abort-on-container-exit
+
+  build:
+    runs-on: ubuntu-latest
+    needs: [test, integration-test]
+    if: github.event_name == 'push'
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+    
+    - name: Log in to Container Registry
+      uses: docker/login-action@v2
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v4
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=ref,event=branch
+          type=sha,prefix={{branch}}-
+    
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v4
+      with:
+        context: .
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+  deploy-staging:
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/develop'
+    environment: staging
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Deploy to staging
+      run: |
+        chmod +x deploy/staging.sh
+        ./deploy/staging.sh
+      env:
+        GITHUB_REPOSITORY: ${{ github.repository }}
+
+  deploy-production:
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    environment: production
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Deploy to production
+      run: |
+        chmod +x deploy/production.sh
+        ./deploy/production.sh
+      env:
+        GITHUB_REPOSITORY: ${{ github.repository }}

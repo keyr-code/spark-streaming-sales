@@ -1,0 +1,60 @@
+FROM openjdk:11-jre-slim
+
+# Set environment variables
+ENV SPARK_VERSION=3.3.2
+ENV HADOOP_VERSION=3
+ENV SPARK_HOME=/opt/spark
+ENV SCRIPTS_DIR=/app/spark_scripts
+ENV PYTHONPATH=/app
+
+# Install dependencies
+RUN apt-get update && \
+    apt-get install -y wget python3 python3-pip inotify-tools && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# Download and install Spark
+RUN wget -q https://archive.apache.org/dist/spark/spark-${SPARK_VERSION}/spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION}.tgz && \
+    tar -xzf spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION}.tgz && \
+    mv spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION} ${SPARK_HOME} && \
+    rm spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION}.tgz
+
+# Set PATH
+ENV PATH=$PATH:${SPARK_HOME}/bin
+
+# Install PySpark and required packages
+RUN pip3 install pyspark==${SPARK_VERSION}
+
+# Download Hadoop AWS, AWS Java SDK, Kafka, and PostgreSQL JARs
+RUN mkdir -p ${SPARK_HOME}/jars/ && \
+    wget -q https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-aws/3.3.1/hadoop-aws-3.3.1.jar -O ${SPARK_HOME}/jars/hadoop-aws-3.3.1.jar && \
+    wget -q https://repo1.maven.org/maven2/com/amazonaws/aws-java-sdk-bundle/1.11.901/aws-java-sdk-bundle-1.11.901.jar -O ${SPARK_HOME}/jars/aws-java-sdk-bundle-1.11.901.jar && \
+    wget -q https://repo1.maven.org/maven2/org/postgresql/postgresql/42.3.1/postgresql-42.3.1.jar -O ${SPARK_HOME}/jars/postgresql-42.3.1.jar && \
+    wget -q https://repo1.maven.org/maven2/org/apache/spark/spark-sql-kafka-0-10_2.12/3.3.2/spark-sql-kafka-0-10_2.12-3.3.2.jar -O ${SPARK_HOME}/jars/spark-sql-kafka-0-10_2.12-3.3.2.jar && \
+    wget -q https://repo1.maven.org/maven2/org/apache/kafka/kafka-clients/3.3.1/kafka-clients-3.3.1.jar -O ${SPARK_HOME}/jars/kafka-clients-3.3.1.jar && \
+    wget -q https://repo1.maven.org/maven2/org/apache/commons/commons-pool2/2.11.1/commons-pool2-2.11.1.jar -O ${SPARK_HOME}/jars/commons-pool2-2.11.1.jar && \
+    wget -q https://repo1.maven.org/maven2/org/apache/spark/spark-streaming-kafka-0-10_2.12/3.3.2/spark-streaming-kafka-0-10_2.12-3.3.2.jar -O ${SPARK_HOME}/jars/spark-streaming-kafka-0-10_2.12-3.3.2.jar && \
+    wget -q https://repo1.maven.org/maven2/org/apache/spark/spark-token-provider-kafka-0-10_2.12/3.3.2/spark-token-provider-kafka-0-10_2.12-3.3.2.jar -O ${SPARK_HOME}/jars/spark-token-provider-kafka-0-10_2.12-3.3.2.jar
+
+# Create scripts directory
+RUN mkdir -p ${SCRIPTS_DIR}
+
+# Copy scripts directory (will be overridden by volume mount)
+COPY spark_scripts/ ${SCRIPTS_DIR}/
+
+# Create work directory
+WORKDIR /app
+
+# Create script to monitor for new files
+RUN echo '#!/bin/bash\necho "Spark container started. Monitoring ${SCRIPTS_DIR} for new files..."\nwhile true; do\n  ls -la ${SCRIPTS_DIR}\n  echo "To run a script: spark-submit ${SCRIPTS_DIR}/script_name.py"\n  echo "Waiting for 10 minutes before next scan..."\n  sleep 600\ndone' > /app/monitor.sh && \
+    chmod +x /app/monitor.sh
+
+# Create manual scan script
+RUN echo '#!/bin/bash\necho "Scanning ${SCRIPTS_DIR} for files:"\nls -la ${SCRIPTS_DIR}\necho "To run a script: spark-submit ${SCRIPTS_DIR}/script_name.py"' > /app/scan.sh && \
+    chmod +x /app/scan.sh
+
+# Expose Spark ports
+EXPOSE 4040 8080 7077
+
+# Set default command to run monitor script and bash
+CMD ["/bin/bash", "-c", "/app/monitor.sh & /bin/bash"]
