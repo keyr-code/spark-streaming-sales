@@ -2,16 +2,18 @@
 Logging module for the music streaming application.
 Provides a consistent logging setup across all application components.
 """
+
 import logging
 from logging.handlers import RotatingFileHandler
 from datetime import datetime
 from pathlib import Path
 
+
 def setup_logger(
     name: str,
     level: int = logging.INFO,
     max_bytes: int = 5 * 1024 * 1024,  # 5 MB
-    backup_count: int = 3
+    backup_count: int = 3,
 ) -> logging.Logger:
     """
     Sets up a logger with console and rotating file handlers.
@@ -42,7 +44,7 @@ def setup_logger(
     if not logger.handlers:
         formatter = logging.Formatter(
             "[%(asctime)s] [%(levelname)s] %(name)s: %(message)s",
-            datefmt="%Y-%m-%d %H:%M:%S"
+            datefmt="%Y-%m-%d %H:%M:%S",
         )
 
         # Console handler
