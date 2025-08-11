@@ -99,7 +99,6 @@ def save_accumulated_to_minio(spark, bucket, path_prefix):
     Returns:
         bool: True if successful
     """
-    global accumulated_records
     
     if not accumulated_records:
         return True  # Nothing to save
@@ -134,7 +133,7 @@ def process_batch(df, epoch_id):
         df (DataFrame): Batch DataFrame
         epoch_id (int): Epoch ID
     """
-    global accumulated_records, last_record_time
+    global last_record_time
     
     if df.isEmpty():
         logger.info(f"Empty batch received at epoch {epoch_id}")
