@@ -1,10 +1,8 @@
-version: '3.8'
-
 services:
   app-test:
     build:
       context: ../
-      dockerfile: Dockerfile
+      dockerfile: tests/Dockerfile
     environment:
       - DATABASE_URL=postgresql://root:root@postgres:5432/goods_store
       - ENVIRONMENT=test
