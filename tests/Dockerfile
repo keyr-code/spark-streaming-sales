@@ -1,4 +1,4 @@
-FROM openjdk:17-slim-bookworm
+FROM eclipse-temurin:21-jdk-jammy
 
 # Install Python
 RUN apt-get update && apt-get install -y \
@@ -6,7 +6,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Set JAVA_HOME environment variable
-ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+ENV JAVA_HOME=/opt/java/openjdk
 ENV PATH=$PATH:$JAVA_HOME/bin
 
 WORKDIR /app
