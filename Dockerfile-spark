@@ -1,4 +1,4 @@
-FROM openjdk:17-slim-bookworm
+FROM eclipse-temurin:17-jdk-jammy
 
 # Set environment variables
 ENV SPARK_VERSION=3.3.2
