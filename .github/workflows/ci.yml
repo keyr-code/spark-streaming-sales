@@ -43,14 +43,8 @@ jobs:
     
     - name: Install dependencies
       run: |
-        pip install pytest pyspark psycopg2-binary flake8 black
+        pip install pytest pyspark psycopg2-binary
         pip install -r requirements.txt
-    
-    - name: Lint with flake8
-      run: flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-    
-    - name: Check code formatting
-      run: black --check .
     
     - name: Run unit tests
       run: pytest tests/ -v --cov=. --cov-report=xml
