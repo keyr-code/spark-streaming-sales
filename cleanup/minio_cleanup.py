@@ -2,6 +2,7 @@
 """
 Script to empty a MinIO bucket
 """
+
 import sys
 import os
 import logging

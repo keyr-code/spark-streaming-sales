@@ -18,4 +18,8 @@ def test_minio_config():
 
 
 def test_kafka_config():
+<<<<<<< Updated upstream
     assert kafka_config.DEFAULT_CONFIG["bootstrap.servers"] == "broker:29092"
+=======
+    assert kafka_config.DEFAULT_CONFIG["bootstrap_servers"] == "broker:29092"
+>>>>>>> Stashed changes

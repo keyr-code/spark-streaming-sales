@@ -128,6 +128,7 @@ def save_accumulated_to_minio(spark, bucket, path_prefix):
     Returns:
         bool: True if successful
     """
+    
     if not accumulated_records:
         return True  # Nothing to save
 
@@ -144,8 +145,8 @@ def save_accumulated_to_minio(spark, bucket, path_prefix):
 
         # Clear accumulated records
         record_count = len(accumulated_records)
-        accumulated_records.clear()
-
+        accumulated_records = []
+        
         logger.info(f"Saved {record_count} accumulated records to {path}")
         return True
     except Exception as e:
@@ -323,7 +324,8 @@ def cleanup_resources():
     """
     Clean up resources before shutdown
     """
-
+    global accumulated_records
+    
     # Save any remaining accumulated records
     if accumulated_records:
         logger.info(

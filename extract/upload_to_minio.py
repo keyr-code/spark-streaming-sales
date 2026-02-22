@@ -17,7 +17,6 @@ from utils.logger.logger import setup_logger
 from minio import Minio
 from minio.error import S3Error
 
-
 # Initialize logger
 logger = setup_logger(__name__)
 
