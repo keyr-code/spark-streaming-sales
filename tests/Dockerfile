@@ -1,12 +1,12 @@
 FROM python:3.11-slim
 
-# Install Java for Spark - use openjdk-11-jre-headless instead of openjdk-11-jdk
+# Install Java for Spark - use openjdk-17-jre-headless (11 is not available in newer Debian)
 RUN apt-get update && apt-get install -y \
-    openjdk-11-jre-headless \
+    openjdk-17-jre-headless \
     && rm -rf /var/lib/apt/lists/*
 
 # Set JAVA_HOME environment variable
-ENV JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
+ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
 ENV PATH=$PATH:$JAVA_HOME/bin
 
 WORKDIR /app
