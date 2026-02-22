@@ -7,10 +7,39 @@ on:
     branches: [main]
   workflow_dispatch:
 
+env:
+  PYTHON_VERSION: '3.11'
+  DOCKER_BUILDKIT: '1'
+
 jobs:
+  security-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install bandit
+        run: pip install bandit
+
+      - name: Run security scan
+        run: bandit -r . -x ./tests,./airflow,./docs -f json -o bandit-report.json
+        continue-on-error: true
+
+      - name: Upload security report
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-report
+          path: bandit-report.json
+          retention-days: 7
+
   test:
     runs-on: ubuntu-latest
-    
+    needs: security-scan
+
     services:
       postgres:
         image: postgres:13
@@ -23,78 +52,136 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-    
+        ports:
+          - 5432:5432
+
     steps:
-    - uses: actions/checkout@v3
-    
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
-    
-    - name: Cache dependencies
-      uses: actions/cache@v3
-      with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-    
-    - name: Install dependencies
-      run: |
-        pip install pytest pyspark psycopg2-binary
-        pip install -r requirements.txt
-    
-    - name: Run unit tests
-      run: pytest tests/ -v --cov=. --cov-report=xml
-    
-    - name: Upload coverage
-      uses: codecov/codecov-action@v3
-      with:
-        file: ./coverage.xml
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          pip install pytest pytest-cov pytest-xdist
+          pip install pyspark psycopg2-binary
+          pip install -r requirements.txt
+
+      - name: Run unit tests with coverage
+        run: pytest tests/ -v --cov=. --cov-report=xml --cov-report=term-missing -n auto
+
+      - name: Upload coverage reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage.xml
+          retention-days: 7
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: test-results.xml
+          retention-days: 7
 
   integration-test:
     runs-on: ubuntu-latest
     needs: test
-    
-    steps:
-    - uses: actions/checkout@v3
-    
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v2
-    
-    - name: Build test image
-      run: docker compose -f tests/docker-compose.test.yml build
-    
-    - name: Run integration tests
-      run: docker compose -f tests/docker-compose.test.yml up --abort-on-container-exit
 
-  deploy-staging:
-    runs-on: ubuntu-latest
-    needs: integration-test
-    if: github.ref == 'refs/heads/dev'
-    environment: staging
-    
     steps:
-    - uses: actions/checkout@v3
-    
-    - name: Deploy to staging
-      run: |
-        chmod +x deploy/staging.sh
-        ./deploy/staging.sh
-      env:
-        GITHUB_REPOSITORY: ${{ github.repository }}
+      - uses: actions/checkout@v4
 
-  deploy-production:
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build test image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: tests/Dockerfile
+          load: true
+          tags: spark-sales-test:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Create Docker network
+        run: docker network create test-network || true
+
+      - name: Run integration tests
+        run: |
+          docker compose -f tests/docker-compose.test.yml up --abort-on-container-exit --remove-orphans
+
+      - name: Upload integration test logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-test-logs
+          path: |
+            tests/integration/test-*.log
+          retention-days: 7
+
+  build:
     runs-on: ubuntu-latest
-    needs: integration-test
-    if: github.ref == 'refs/heads/main'
-    environment: production
-    
+    needs: [test, integration-test]
+    if: github.event_name == 'push'
+
     steps:
-    - uses: actions/checkout@v3
-    
-    - name: Deploy to production
-      run: |
-        chmod +x deploy/production.sh
-        ./deploy/production.sh
-      env:
-        GITHUB_REPOSITORY: ${{ github.repository }}
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Python image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile-python
+          push: false
+          tags: spark-sales-python:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build Spark image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile-spark
+          push: false
+          tags: spark-sales-spark:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Upload Docker images as artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-images
+          path: |
+            *.tar
+          retention-days: 1
+
+  notify:
+    runs-on: ubuntu-latest
+    needs: [test, integration-test]
+    if: always()
+
+    steps:
+      - name: Create summary
+        run: |
+          echo "## CI/CD Pipeline Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "- Security Scan: ${{ needs.security-scan.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Unit Tests: ${{ needs.test.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Integration Tests: ${{ needs.integration-test.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Build: ${{ needs.build.result }}" >> $GITHUB_STEP_SUMMARY
