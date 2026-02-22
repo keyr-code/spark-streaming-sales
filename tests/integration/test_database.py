@@ -4,21 +4,14 @@ import os
 
 
 def test_database_connection():
-<<<<<<< Updated upstream
     """Test database connectivity - skip if no database available"""
-=======
-    """Test database connectivity"""
->>>>>>> Stashed changes
     db_url = os.getenv(
         "DATABASE_URL", "postgresql://root:root@localhost:5432/goods_store"
     )
 
-<<<<<<< Updated upstream
     if not os.getenv("DATABASE_URL"):
         pytest.skip("No database configured for testing")
 
-=======
->>>>>>> Stashed changes
     try:
         conn = psycopg2.connect(db_url)
         cursor = conn.cursor()
@@ -32,16 +25,11 @@ def test_database_connection():
 
 
 def test_database_tables():
-<<<<<<< Updated upstream
     """Test that required tables exist - skip if no database"""
-=======
-    """Test that required tables exist"""
->>>>>>> Stashed changes
     db_url = os.getenv(
         "DATABASE_URL", "postgresql://root:root@localhost:5432/goods_store"
     )
 
-<<<<<<< Updated upstream
     if not os.getenv("DATABASE_URL"):
         pytest.skip("No database configured for testing")
 
@@ -65,20 +53,3 @@ def test_database_tables():
             assert table in tables, f"Table {table} not found"
     except psycopg2.OperationalError:
         pytest.skip("Database not available")
-=======
-    conn = psycopg2.connect(db_url)
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        SELECT table_name FROM information_schema.tables 
-        WHERE table_schema = 'public'
-    """)
-
-    tables = [row[0] for row in cursor.fetchall()]
-    conn.close()
-
-    # Add your expected table names here
-    expected_tables = ["products", "orders"]  # Example tables
-    for table in expected_tables:
-        assert table in tables, f"Table {table} not found"
->>>>>>> Stashed changes
