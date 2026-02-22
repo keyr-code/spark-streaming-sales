@@ -1,8 +1,8 @@
-FROM python:3.11-slim
+FROM openjdk:17-slim-bookworm
 
-# Install Java for Spark - use openjdk-17-jre-headless (11 is not available in newer Debian)
+# Install Python
 RUN apt-get update && apt-get install -y \
-    openjdk-17-jre-headless \
+    python3.11 python3-pip \
     && rm -rf /var/lib/apt/lists/*
 
 # Set JAVA_HOME environment variable
@@ -17,4 +17,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 EXPOSE 8000
 
-CMD ["python", "app.py"]
+CMD ["python3", "app.py"]
