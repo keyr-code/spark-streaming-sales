@@ -1,4 +1,4 @@
-FROM openjdk:11-jre-slim
+FROM openjdk:17-slim-bookworm
 
 # Set environment variables
 ENV SPARK_VERSION=3.3.2
